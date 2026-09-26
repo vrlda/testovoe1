@@ -4,13 +4,17 @@
 
 - Воронка: https://test.vrld.cc
 - Панель управления: https://test.vrld.cc/admin
-- Для панели нужен токен администратора, который передаётся проверяющему отдельно. Для приватного репозитория также нужен доступ к коду.
+- Репозиторий: https://github.com/vrlda/testovoe1
+
+Для панели нужен токен администратора, который передаётся проверяющему отдельно.
 
 ## Локальный запуск
 
 Нужен Node.js 24+ с `node:sqlite`.
 
 ```bash
+git clone https://github.com/vrlda/testovoe1.git
+cd testovoe1
 npm ci
 ADMIN_TOKEN=change-this npm run dev
 ```
