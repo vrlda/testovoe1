@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { createStore, type Session } from '../server/core.ts';
+import { createStore } from '../server/core.ts';
+import type { Session } from '../shared/types.ts';
 const v1 = JSON.parse(readFileSync('configs/workstyle-v1.json', 'utf8'));
 const ev = (
   s: Session,

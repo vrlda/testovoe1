@@ -1,6 +1,7 @@
+import { errorMessage } from '../locale';
 import { useEffect, useRef, useState } from 'react';
 import type { AdminMeta, AnalyticsReport } from '../../shared/types';
-import { api, message } from '../api';
+import { api } from '../api';
 import { ApiError } from '../transport';
 import { Shell, Notice } from '../components';
 import { Analytics } from './Analytics';
@@ -35,7 +36,7 @@ export function Admin() {
           if (sessionStorage.getItem('admin_token'))
             setError('Неверный токен. Попробуйте ещё раз.');
           sessionStorage.removeItem('admin_token');
-        } else setError(message(error));
+        } else setError(errorMessage(error));
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);

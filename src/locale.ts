@@ -177,3 +177,8 @@ export function errorMessage(error: unknown): string {
     if (pattern.test(value)) return value.replace(pattern, replacement);
   return 'Не удалось выполнить действие. Проверьте соединение и попробуйте ещё раз.';
 }
+
+export const percent = (part: number, total: number) =>
+  total
+    ? `${((part / total) * 100).toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+    : '—';

@@ -1,7 +1,6 @@
-import { text } from '../locale';
+import { text, percent } from '../locale';
 import { useState } from 'react';
 import type { AnalyticsGroup, AnalyticsReport } from '../../shared/types';
-import { percent } from '../api';
 
 export function Analytics({ report }: { report: AnalyticsReport }) {
   const [selection, setSelection] = useState('');

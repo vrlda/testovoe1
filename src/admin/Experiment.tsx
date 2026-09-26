@@ -1,4 +1,4 @@
-import { text } from '../locale';
+import { text, errorMessage } from '../locale';
 import { useEffect, useState } from 'react';
 import type {
   AdminMeta,
@@ -7,7 +7,7 @@ import type {
   Config,
   Variant,
 } from '../../shared/types';
-import { api, message, previewUrl } from '../api';
+import { api } from '../api';
 import { Notice } from '../components';
 import { ComparisonTable } from './Analytics';
 
@@ -37,7 +37,7 @@ export function Experiment({
         setWeight(String(distribution(config)));
       })
       .catch((error) => {
-        if (!controller.signal.aborted) setError(message(error));
+        if (!controller.signal.aborted) setError(errorMessage(error));
       });
     return () => controller.abort();
   }, [version]);
@@ -60,7 +60,7 @@ export function Experiment({
       const result = await api.weights(meta.active, a);
       onPublished(result.version);
     } catch (error) {
-      setError(message(error));
+      setError(errorMessage(error));
     } finally {
       setBusy(false);
     }
@@ -158,7 +158,7 @@ export function Experiment({
                       {active && (
                         <a
                           className="button small"
-                          href={previewUrl(variant)}
+                          href={`/?variant=${variant}&new=1&utm_campaign=ab_manual_check`}
                           target="_blank"
                           rel="noopener noreferrer"
                         >

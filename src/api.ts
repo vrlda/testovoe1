@@ -1,11 +1,4 @@
-import { errorMessage } from './locale';
-import type {
-  AdminMeta,
-  AnalyticsReport,
-  ExperimentState,
-  FunnelState,
-  Variant,
-} from '../shared/types';
+import type { AdminMeta, AnalyticsReport, ExperimentState, FunnelState } from '../shared/types';
 import { requestJson } from './transport';
 
 export const api = {
@@ -38,10 +31,3 @@ export const api = {
 function post<T>(url: string, body: unknown) {
   return requestJson<T>(url, { method: 'POST', body: JSON.stringify(body) });
 }
-export const previewUrl = (variant: Variant) =>
-  `/?variant=${variant}&new=1&utm_campaign=ab_manual_check`;
-export const message = errorMessage;
-export const percent = (part: number, total: number) =>
-  total
-    ? `${((part / total) * 100).toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
-    : '—';

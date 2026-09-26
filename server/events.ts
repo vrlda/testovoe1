@@ -1,6 +1,10 @@
-import type { Config, Step } from './config.ts';
-
-import { baseEvents, type BaseEvent, type EventDefinition } from '../shared/types.ts';
+import {
+  baseEvents,
+  type BaseEvent,
+  type EventDefinition,
+  type Config,
+  type Step,
+} from '../shared/types.ts';
 const fields: Record<BaseEvent, string[]> = {
   session_started: [],
   step_viewed: ['step_type', 'visible_step_index', 'visible_step_count'],

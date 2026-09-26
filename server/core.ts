@@ -3,9 +3,15 @@ import { DatabaseSync, type SQLInputValue, type StatementSync } from 'node:sqlit
 import { randomUUID, createHash } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { normalizeConfig, validateConfig, matches, type Step, type Config } from './config.ts';
-import type { Session, IncomingEvent, EventReceipt, VersionSummary } from '../shared/types.ts';
-export type { Step, Config, Session, IncomingEvent } from '../shared/types.ts';
+import { normalizeConfig, validateConfig, matches } from './config.ts';
+import type {
+  Session,
+  IncomingEvent,
+  EventReceipt,
+  VersionSummary,
+  Step,
+  Config,
+} from '../shared/types.ts';
 import { definitions, validateProperties } from './events.ts';
 export function createStore(path = 'data/funnel.sqlite') {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
@@ -256,33 +262,7 @@ export function createStore(path = 'data/funnel.sqlite') {
       throw Error('Invalid client timestamp');
     const step = steps(session).find((x) => x.id === session.current);
     if (!step || step.type === 'result') throw Error('Invalid step');
-    if (step.type === 'single' && !step.options?.some((o) => o.value === value))
-      throw Error(step.messages?.required || 'Choose an option');
-    if (step.type === 'multi') {
-      if (
-        !Array.isArray(value) ||
-        new Set(value).size !== value.length ||
-        value.some((x) => !step.options?.some((o) => o.value === x))
-      )
-        throw Error('Choose valid options');
-      if (value.length < (step.minSelections ?? (step.required ? 1 : 0)))
-        throw Error(step.messages?.minSelections || 'Choose more options');
-      if (step.maxSelections !== undefined && value.length > step.maxSelections)
-        throw Error(step.messages?.maxSelections || 'Choose fewer options');
-    }
-    if (step.type === 'number') {
-      if (typeof value !== 'number' || !Number.isFinite(value))
-        throw Error(step.messages?.required || 'Enter a number');
-      if (step.min !== undefined && value < step.min)
-        throw Error(step.messages?.min || 'Number is too small');
-      if (step.max !== undefined && value > step.max)
-        throw Error(step.messages?.max || 'Number is too large');
-      if (
-        step.inputStep !== undefined &&
-        !Number.isInteger((value - (step.min || 0)) / step.inputStep)
-      )
-        throw Error('Enter a whole step value');
-    }
+    validateAnswer(step, value);
     if (step.type !== 'info') session.answers[step.id] = value;
     const target = next(session, step);
     if (!target || !steps(session).some((x) => x.id === target)) throw Error('Invalid next step');
@@ -463,4 +443,34 @@ function readSession(row: SessionRow): Session {
     current: row.current,
     createdAt: row.created_at,
   };
+}
+
+function validateAnswer(step: Step, value: unknown) {
+  if (step.type === 'single' && !step.options?.some((option) => option.value === value))
+    throw Error(step.messages?.required || 'Choose an option');
+  if (step.type === 'multi') {
+    if (
+      !Array.isArray(value) ||
+      new Set(value).size !== value.length ||
+      value.some((selected) => !step.options?.some((option) => option.value === selected))
+    )
+      throw Error('Choose valid options');
+    if (value.length < (step.minSelections ?? (step.required ? 1 : 0)))
+      throw Error(step.messages?.minSelections || 'Choose more options');
+    if (step.maxSelections !== undefined && value.length > step.maxSelections)
+      throw Error(step.messages?.maxSelections || 'Choose fewer options');
+  }
+  if (step.type === 'number') {
+    if (typeof value !== 'number' || !Number.isFinite(value))
+      throw Error(step.messages?.required || 'Enter a number');
+    if (step.min !== undefined && value < step.min)
+      throw Error(step.messages?.min || 'Number is too small');
+    if (step.max !== undefined && value > step.max)
+      throw Error(step.messages?.max || 'Number is too large');
+    if (
+      step.inputStep !== undefined &&
+      !Number.isInteger((value - (step.min || 0)) / step.inputStep)
+    )
+      throw Error('Enter a whole step value');
+  }
 }

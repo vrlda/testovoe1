@@ -1,6 +1,7 @@
+import { errorMessage } from './locale';
 import { useEffect, useRef, useState } from 'react';
 import type { FunnelState, IncomingEvent, EventReceipt } from '../shared/types';
-import { api, message } from './api';
+import { api } from './api';
 import { ApiError, requestJson, restoreSession, createOutbox } from './transport';
 
 const outbox = createOutbox(localStorage, (batch) =>
@@ -71,7 +72,7 @@ export function useFunnel() {
         setData(next);
       })
       .catch((error) => {
-        if (alive) setError(message(error));
+        if (alive) setError(errorMessage(error));
       });
     return () => {
       alive = false;
@@ -91,7 +92,7 @@ export function useFunnel() {
       if (error instanceof ApiError && (error.status === 409 || error.status === 410)) {
         setData(null);
         setAttempt((value) => value + 1);
-      } else setError(message(error));
+      } else setError(errorMessage(error));
     } finally {
       inFlight.current = false;
       setBusy(false);

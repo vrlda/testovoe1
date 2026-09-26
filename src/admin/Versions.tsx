@@ -1,6 +1,7 @@
+import { errorMessage } from '../locale';
 import { useState } from 'react';
 import type { AdminMeta } from '../../shared/types';
-import { api, message } from '../api';
+import { api } from '../api';
 import { Notice } from '../components';
 
 export function Versions({
@@ -35,7 +36,7 @@ export function Versions({
       }
       onPublished(result.version);
     } catch (error) {
-      setError(message(error));
+      setError(errorMessage(error));
     } finally {
       setBusy(null);
     }
@@ -104,7 +105,7 @@ export function Versions({
                     setFilename(file.name);
                     setError('');
                   } catch (error) {
-                    setError(message(error));
+                    setError(errorMessage(error));
                   }
                   event.target.value = '';
                 }}

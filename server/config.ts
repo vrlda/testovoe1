@@ -1,6 +1,5 @@
 import { validateEvents } from './events.ts';
 import type { Condition, Config, Step, EventDefinition } from '../shared/types.ts';
-export type { Config, Step } from '../shared/types.ts';
 export function matches(
   condition: Condition | undefined,
   answers: Record<string, unknown>,
