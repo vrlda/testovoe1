@@ -157,3 +157,20 @@ test('outbox reads one batch at a time and drains a larger backlog without loss'
   assert.equal(sent.length, 120);
   assert.equal(new Set(sent).size, 120);
 });
+
+test('outbox retains throttled events and accepts a later successful retry', async () => {
+  const { storage } = memoryStorage();
+  let calls = 0;
+  const outbox = createOutbox(storage, async (batch) => {
+    if (++calls === 1) throw new ApiError('Too many requests', 429);
+    return { results: batch.map((_, index) => ({ index, status: 'accepted' as const })) };
+  });
+  outbox.enqueue(event('rate-limited'));
+  await assert.rejects(
+    outbox.flush(),
+    (error: unknown) => error instanceof ApiError && error.status === 429,
+  );
+  assert.equal(outbox.pending().length, 1);
+  await outbox.flush();
+  assert.equal(outbox.pending().length, 0);
+});

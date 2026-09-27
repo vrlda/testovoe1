@@ -40,17 +40,15 @@ export function useFunnel() {
   useEffect(() => {
     let alive = true;
     setError('');
-    const query = new URLSearchParams(location.search);
+    const url = new URL(location.href);
+    url.searchParams.delete('session');
+    history.replaceState(null, '', url.pathname + url.search + url.hash);
+    const query = url.searchParams;
     const variant = query.get('variant');
     const override = variant === 'A' || variant === 'B';
-    const key = override ? `funnel_session_${variant}` : 'funnel_session';
+    const key = override ? `funnel_preview_${variant}` : 'funnel_session';
     const storage = override ? sessionStorage : localStorage;
-    const id =
-      query.get('new') === '1'
-        ? null
-        : (override ? query.get('session') : null) ||
-          storage.getItem(key) ||
-          localStorage.getItem(key);
+    const id = query.get('new') === '1' ? null : storage.getItem(key) || localStorage.getItem(key);
     const create = async () => {
       const utm = Object.fromEntries(
         [...query.entries()].filter(([key]) => key.startsWith('utm_')),
@@ -60,8 +58,8 @@ export function useFunnel() {
       localStorage.setItem(key, next.session.id);
       const url = new URL(location.href);
       url.searchParams.delete('new');
-      if (override) url.searchParams.set('session', next.session.id);
-      history.replaceState(null, '', url.pathname + url.search);
+      url.searchParams.delete('session');
+      history.replaceState(null, '', url.pathname + url.search + url.hash);
       return next;
     };
     restoreSession(id, api.session, create)
@@ -101,7 +99,7 @@ export function useFunnel() {
   function restart() {
     const url = new URL(location.href);
     url.searchParams.set('new', '1');
-    location.assign(url.pathname + url.search);
+    location.assign(url.pathname + url.search + url.hash);
   }
   return { data, error, busy, navigate, retry: () => setAttempt((value) => value + 1), restart };
 }

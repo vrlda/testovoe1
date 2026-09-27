@@ -2,6 +2,7 @@ import express, { type Request, type Response, type ErrorRequestHandler } from '
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { createStore } from './core.ts';
+import { rateLimit } from './limits.ts';
 import type { Session } from '../shared/types.ts';
 
 class HttpError extends Error {
@@ -16,14 +17,21 @@ export function createApp(
   store: ReturnType<typeof createStore>,
   adminToken = process.env.ADMIN_TOKEN,
 ) {
+  if (!adminToken?.trim()) throw Error('ADMIN_TOKEN is required.');
   const app = express();
-  app.use(express.json({ limit: '1mb' }));
+  if (process.env.TRUST_PROXY)
+    app.set(
+      'trust proxy',
+      process.env.TRUST_PROXY.split(',').map((ip) => ip.trim()),
+    );
   app.use('/api', (_req, res, next) => {
     res.set('Cache-Control', 'no-store');
     next();
   });
+  app.use('/api', rateLimit(300, 3000));
+  app.use(express.json({ limit: '1mb' }));
   const authorize: express.RequestHandler = (req, res, next) => {
-    if (!adminToken || req.get('x-admin-token') === adminToken) return next();
+    if (req.get('x-admin-token') === adminToken) return next();
     res.status(401).json({ error: 'An admin token is required.' });
   };
   app.use('/api/admin', authorize);
@@ -70,10 +78,12 @@ export function createApp(
   );
   app.post(
     '/api/session',
+    rateLimit(20, 200),
     route((req, res) => {
       const input = body(req);
       const variant = optionalString(input.variant ?? undefined);
-      const utm = stringMap(input.utm);
+      const utm = input.utm === undefined ? {} : input.utm;
+      // Store validates every caller, including CLI imports.
       res.json(state(store.start(variant, utm)));
     }),
   );
@@ -87,6 +97,7 @@ export function createApp(
   );
   app.post(
     '/api/events',
+    rateLimit(600, 6000, (req) => (Array.isArray(req.body) ? Math.max(1, req.body.length) : 1)),
     route((req, res) => res.json({ results: store.ingest(req.body) })),
   );
   app.get(
@@ -159,15 +170,4 @@ function number(value: unknown) {
   if (typeof value !== 'number' || !Number.isFinite(value))
     throw new HttpError(400, 'Expected a finite number.');
   return value;
-}
-function stringMap(value: unknown): Record<string, string> {
-  if (value === undefined) return {};
-  if (
-    !value ||
-    typeof value !== 'object' ||
-    Array.isArray(value) ||
-    Object.values(value).some((item) => typeof item !== 'string')
-  )
-    throw new HttpError(400, 'UTM values must be strings.');
-  return value as Record<string, string>;
 }

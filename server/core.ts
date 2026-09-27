@@ -1,3 +1,4 @@
+import { validateUtm } from './limits.ts';
 import { aggregate, type AnalyticsEvent } from './analytics.ts';
 import { DatabaseSync, type SQLInputValue, type StatementSync } from 'node:sqlite';
 import { randomUUID, createHash } from 'node:crypto';
@@ -151,8 +152,9 @@ export function createStore(path = 'data/funnel.sqlite') {
       session.current,
       session.id,
     );
-  const start = (variant?: string, utm: Record<string, string> = {}): Session =>
+  const start = (variant?: string, utm: unknown = {}): Session =>
     transaction(() => {
+      validateUtm(utm);
       const version = active();
       const { A, B } = config(version).variants;
       const weightA = A.weight ?? 50;
@@ -297,6 +299,7 @@ export function createStore(path = 'data/funnel.sqlite') {
   };
   const ingest = (batch: unknown): EventReceipt[] => {
     if (!Array.isArray(batch)) throw Error('Expected an array');
+    if (batch.length > 50) throw Error('Event batch must contain at most 50 items.');
     return batch.map((raw, index) => {
       try {
         return transaction(() => {
@@ -308,12 +311,15 @@ export function createStore(path = 'data/funnel.sqlite') {
             e.event_id.length > 200 ||
             typeof e.session_id !== 'string' ||
             typeof e.client_timestamp !== 'string' ||
+            e.client_timestamp.length > 64 ||
             !Number.isFinite(Date.parse(e.client_timestamp)) ||
             typeof e.type !== 'string'
           )
             throw Error('Invalid event');
           const session = getSession(e.session_id);
           if (!session) throw Error('Unknown session');
+          // Validate stored metadata too, so pre-existing oversized rows cannot amplify writes.
+          validateUtm(session.utm);
           const cfg = config(session.version),
             sequence = cfg.variants[session.variant].steps,
             defs = definitions(cfg),
@@ -323,6 +329,12 @@ export function createStore(path = 'data/funnel.sqlite') {
             throw Error('A valid step_id is required');
           const clean = validateProperties(cfg, sequence, definition, e.properties);
           const insert = (id: string, type: string, properties: Record<string, unknown>) => {
+            if (one('SELECT 1 FROM events WHERE event_id=?', id)) return 0;
+            const count = one<{ n: number }>(
+              'SELECT count(*) n FROM events WHERE session_id=?',
+              session.id,
+            )!.n;
+            if (count >= 2000) throw Error('Session event limit reached.');
             if (cfg.funnelId)
               properties = {
                 ...properties,

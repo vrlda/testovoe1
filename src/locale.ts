@@ -1,5 +1,10 @@
 // Translations for the supplied configuration. IDs, answers and stored JSON stay unchanged.
 const translations: Record<string, string> = {
+  'UTM fields exceed allowed limits.':
+    'Параметры кампании слишком длинные или имеют неверный формат.',
+  'Too many requests. Please retry shortly.':
+    'Слишком много запросов. Подождите минуту и повторите.',
+  'Session event limit reached.': 'Достигнут лимит событий сессии. Начните заново.',
   "Find your team's operating style": 'Подберите формат работы команды',
   'Team operating-style check': 'Формат работы команды',
   '2-minute team check': 'Оценка команды за две минуты',
