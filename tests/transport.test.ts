@@ -126,3 +126,34 @@ test('outboxes in separate tabs retain concurrent writes and migrate existing pe
   await second.flush();
   assert.deepEqual(first.pending(), []);
 });
+
+test('outbox reads one batch at a time and drains a larger backlog without loss', async () => {
+  const { storage } = memoryStorage();
+  let reads = 0;
+  const measured = {
+    ...storage,
+    get length() {
+      return storage.length;
+    },
+    getItem(key: string) {
+      reads++;
+      return storage.getItem(key);
+    },
+  };
+  const sent: string[] = [];
+  const outbox = createOutbox(measured, async (batch) => {
+    assert.ok(batch.length <= 50);
+    sent.push(...batch.map((item) => item.event_id));
+    return { results: batch.map((_, index) => ({ index, status: 'accepted' as const })) };
+  });
+  for (let index = 0; index < 120; index++) outbox.enqueue(event(String(index)));
+  reads = 0;
+  await outbox.flush();
+  assert.equal(reads, 50);
+  assert.equal(storage.length, 70);
+  await outbox.flush();
+  await outbox.flush();
+  assert.equal(storage.length, 0);
+  assert.equal(sent.length, 120);
+  assert.equal(new Set(sent).size, 120);
+});

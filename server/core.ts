@@ -224,7 +224,7 @@ export function createStore(path = 'data/funnel.sqlite') {
     };
   };
   const visible = (session: Session, step: Step) => matches(step.visibleWhen, session.answers);
-  const next = (session: Session, step: Step) => {
+  const next = (session: Session, step: Step, sequence: Step[]) => {
     for (const rule of step.rules || []) {
       const answer = session.answers[rule.when.step];
       if (
@@ -236,10 +236,10 @@ export function createStore(path = 'data/funnel.sqlite') {
       )
         return rule.next;
     }
-    const sequence = steps(session),
-      index = sequence.findIndex((x) => x.id === step.id);
     if (step.next) return step.next;
-    return sequence.slice(index + 1).find((x) => visible(session, x))?.id;
+    const index = sequence.findIndex((candidate) => candidate.id === step.id);
+    for (let nextIndex = index + 1; nextIndex < sequence.length; nextIndex++)
+      if (visible(session, sequence[nextIndex])) return sequence[nextIndex].id;
   };
   const pathFor = (session: Session) => {
     const sequence = steps(session);
@@ -253,21 +253,23 @@ export function createStore(path = 'data/funnel.sqlite') {
       const step = sequence.find((x) => x.id === id);
       if (!step) break;
       route.push(step);
-      id = next(session, step);
+      id = next(session, step, sequence);
     }
     return route;
   };
   const submit = (session: Session, value: unknown, clientTimestamp = new Date().toISOString()) => {
     if (typeof clientTimestamp !== 'string' || !Number.isFinite(Date.parse(clientTimestamp)))
       throw Error('Invalid client timestamp');
-    const step = steps(session).find((x) => x.id === session.current);
+    const sequence = config(session.version).variants[session.variant].steps;
+    const step = sequence.find((candidate) => candidate.id === session.current);
     if (!step || step.type === 'result') throw Error('Invalid step');
     validateAnswer(step, value);
     if (step.type !== 'info') session.answers[step.id] = value;
-    const target = next(session, step);
-    if (!target || !steps(session).some((x) => x.id === target)) throw Error('Invalid next step');
+    const target = next(session, step, sequence);
+    if (!target || !sequence.some((candidate) => candidate.id === target))
+      throw Error('Invalid next step');
     // Answers on a now-hidden branch must not affect future result rules.
-    for (const candidate of steps(session))
+    for (const candidate of sequence)
       if (!visible(session, candidate)) delete session.answers[candidate.id];
     session.history.push(step.id);
     session.current = target;
@@ -313,7 +315,7 @@ export function createStore(path = 'data/funnel.sqlite') {
           const session = getSession(e.session_id);
           if (!session) throw Error('Unknown session');
           const cfg = config(session.version),
-            sequence = steps(session),
+            sequence = cfg.variants[session.variant].steps,
             defs = definitions(cfg),
             definition = defs.find((d) => d.name === e.type);
           if (!definition) throw Error('Event not allowed for this version');

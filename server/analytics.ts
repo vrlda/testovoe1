@@ -71,16 +71,23 @@ export function aggregate(
       if (step.type === 'result' || !viewed.has(step.id)) continue;
       const metric = group.steps[step.id] || { views: 0, advanced: 0 };
       metric.views++;
-      const recorded = summary?.transitions.get(step.id);
-      // Pre-upgrade events may lack targets. Fall back to config edges, never mutable answers.
-      const possible = new Set((step.rules || []).map((rule) => rule.next));
-      if (step.next) possible.add(step.next);
-      else
-        for (const candidate of steps.slice(index + 1)) {
-          possible.add(candidate.id);
-          if (!candidate.visibleWhen) break;
+      let targets = summary?.transitions.get(step.id);
+      // Older events may lack targets. Only then derive possible edges from the pinned config.
+      if (!targets) {
+        targets = new Set((step.rules || []).map((rule) => rule.next));
+        if (step.next) targets.add(step.next);
+        else
+          for (let nextIndex = index + 1; nextIndex < steps.length; nextIndex++) {
+            const candidate = steps[nextIndex];
+            targets.add(candidate.id);
+            if (!candidate.visibleWhen) break;
+          }
+      }
+      for (const target of targets)
+        if (seen.has(target)) {
+          metric.advanced++;
+          break;
         }
-      if ([...(recorded || possible)].some((id) => seen.has(id))) metric.advanced++;
       group.steps[step.id] = metric;
     }
   }

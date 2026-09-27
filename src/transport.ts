@@ -78,9 +78,9 @@ export function createOutbox(
     }
   }
   let running: Promise<void> | undefined;
-  function pending() {
+  function pending(limit = Infinity) {
     const events: IncomingEvent[] = [];
-    for (let index = 0; index < storage.length; index++) {
+    for (let index = 0; index < storage.length && events.length < limit; index++) {
       const key = storage.key(index);
       if (!key?.startsWith(pendingPrefix)) continue;
       const raw = storage.getItem(key);
@@ -91,7 +91,7 @@ export function createOutbox(
   function flush(): Promise<void> {
     if (running) return running;
     running = (async () => {
-      const batch = pending().slice(0, 50);
+      const batch = pending(50);
       if (!batch.length) return;
       const { results } = await send(batch);
       if (!Array.isArray(results)) throw Error('Invalid event receipt');
