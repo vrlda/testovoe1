@@ -10,6 +10,7 @@ import type {
 import { api } from '../api';
 import { Notice } from '../components';
 import { ComparisonTable } from './Analytics';
+import { differenceInterval } from '../../shared/stats';
 
 export function Experiment({
   meta,
@@ -49,9 +50,7 @@ export function Experiment({
       report.groups.find((group) => group.version === version && group.variant === variant) ||
       emptyGroup(version, variant),
   );
-  const difference = groups.every((group) => group.started)
-    ? (groups[1].resultRate - groups[0].resultRate) * 100
-    : null;
+  const interval = differenceInterval(groups[0], groups[1]);
   async function publish() {
     if (!valid || busy) return;
     setBusy(true);
@@ -138,9 +137,13 @@ export function Experiment({
             <h2>Results</h2>
             <ComparisonTable groups={groups} />
             <p className="caption">
-              {difference === null
-                ? 'Sessions in both variants are needed for comparison.'
-                : `B − A: ${difference >= 0 ? '+' : ''}${difference.toLocaleString('en-AU', { maximumFractionDigits: 1 })} percentage points. Observed difference; statistical significance has not been assessed.`}
+              {interval === null
+                ? 'Started sessions in both variants are needed for comparison.'
+                : `B − A: ${points(interval.difference)} pp, 95% CI ${points(interval.low)} to ${points(interval.high)} pp. ${
+                    interval.low > 0 || interval.high < 0
+                      ? 'The interval excludes zero.'
+                      : 'The interval includes zero, so the difference may be noise.'
+                  }`}
             </p>
           </section>
           <section className="section">
@@ -216,6 +219,8 @@ export function Experiment({
     </>
   );
 }
+const points = (value: number) =>
+  `${value >= 0 ? '+' : ''}${value.toLocaleString('en-AU', { maximumFractionDigits: 1 })}`;
 function distribution(config: Config) {
   const a = config.variants.A.weight ?? 50,
     b = config.variants.B.weight ?? 50;

@@ -15,7 +15,7 @@ export function Versions({
   const [filename, setFilename] = useState('');
   const [busy, setBusy] = useState<'publish' | 'rollback' | null>(null);
   const [error, setError] = useState('');
-  const previous = meta.versions.find((version) => version.version < meta.active);
+  const previous = meta.versions.find((version) => version.version === meta.rollbackTo);
   let parsed: unknown;
   let valid = false;
   try {

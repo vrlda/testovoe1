@@ -86,8 +86,9 @@ export function normalizeConfig(input: unknown): Config {
   return {
     name: raw.title,
     hypothesis:
-      'Asking about work mode earlier and reframing the result in B will increase the share of sessions reaching a recommendation.',
-    metric: 'Sessions reaching a result / sessions started',
+      'Opening B with a problem-framed intro and asking about work mode first will get more started sessions to a recommendation. B’s result titles only affect people who already reached the result, so they are expected to move CTA clicks, not result reach.',
+    metric:
+      'Primary: sessions reaching a result / started sessions. Secondary: CTA clicks / sessions with a result.',
     sourceVersion: raw.version,
     funnelId: raw.funnelId,
     experimentId: raw.experiment.id,

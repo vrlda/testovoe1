@@ -1,5 +1,6 @@
 import express, { type Request, type Response, type ErrorRequestHandler } from 'express';
 import { existsSync } from 'node:fs';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { resolve } from 'node:path';
 import type { createStore } from './core.ts';
 import { rateLimit } from './limits.ts';
@@ -30,8 +31,11 @@ export function createApp(
   });
   app.use('/api', rateLimit(300, 3000));
   app.use(express.json({ limit: '1mb' }));
+  // Hashing first gives equal-length buffers, so the comparison time does not leak the token.
+  const digest = (value: string) => createHash('sha256').update(value).digest();
+  const expected = digest(adminToken);
   const authorize: express.RequestHandler = (req, res, next) => {
-    if (req.get('x-admin-token') === adminToken) return next();
+    if (timingSafeEqual(digest(req.get('x-admin-token') ?? ''), expected)) return next();
     res.status(401).json({ error: 'An admin token is required.' });
   };
   app.use('/api/admin', authorize);
@@ -102,7 +106,13 @@ export function createApp(
   );
   app.get(
     '/api/admin',
-    route((_req, res) => res.json({ active: store.active(), versions: store.versions() })),
+    route((_req, res) =>
+      res.json({
+        active: store.active(),
+        rollbackTo: store.rollbackTarget(),
+        versions: store.versions(),
+      }),
+    ),
   );
   app.get(
     '/api/admin/experiment',

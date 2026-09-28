@@ -103,7 +103,7 @@ export type EventReceipt = {
 };
 export type FunnelState = { session: Session; config: Config; path: Step[] };
 export type VersionSummary = { version: number; published_at: string; sourceVersion?: number };
-export type AdminMeta = { active: number; versions: VersionSummary[] };
+export type AdminMeta = { active: number; rollbackTo?: number; versions: VersionSummary[] };
 export type ExperimentState = { version: number; active: number; config: Config };
 export type StepMetric = {
   id: string;

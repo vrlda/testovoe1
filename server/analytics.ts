@@ -55,8 +55,11 @@ export function aggregate(
       };
       groups.set(key, group);
     }
-    group.started++;
     const summary = bySession.get(session.id);
+    // session_started is written by the server on creation. A session counts as started only
+    // after the client reports something, so API-only creations and retried creates are ignored.
+    if ([...(summary?.types.keys() ?? [])].some((type) => type !== 'session_started'))
+      group.started++;
     const viewed = summary?.types.get('step_viewed') || new Set<string>();
     const results = summary?.types.get('result_viewed') || new Set<string>();
     if (results.size) group.result++;

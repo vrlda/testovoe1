@@ -48,7 +48,24 @@ export function createStore(path = 'data/funnel.sqlite') {
       properties TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS events_session ON events(session_id);
+    CREATE TABLE IF NOT EXISTS activations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      version INTEGER NOT NULL,
+      activated_at TEXT NOT NULL,
+      rolled_back_at TEXT
+    );
   `);
+  // Databases created before the activation log: treat published versions up to the active one
+  // as the stack, in publication order. Later numbers were already rolled back.
+  if (!db.prepare('SELECT 1 FROM activations LIMIT 1').get()) {
+    const current = Number(
+      (db.prepare("SELECT value FROM meta WHERE key='active'").get() as { value?: string })
+        ?.value || 0,
+    );
+    db.prepare(
+      'INSERT INTO activations(version,activated_at,rolled_back_at) SELECT version,published_at,CASE WHEN version>? THEN published_at END FROM configs ORDER BY version',
+    ).run(current);
+  }
   let transactionDepth = 0;
   const transaction = <T>(fn: () => T): T => {
     if (transactionDepth) return fn();
@@ -100,11 +117,18 @@ export function createStore(path = 'data/funnel.sqlite') {
         JSON.stringify(configuration),
         new Date().toISOString(),
       );
-      prepare(
-        "INSERT INTO meta(key,value) VALUES('active',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-      ).run(String(version));
+      activate(version);
       return version;
     });
+  const activate = (version: number) => {
+    prepare(
+      "INSERT INTO meta(key,value) VALUES('active',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+    ).run(String(version));
+    prepare('INSERT INTO activations(version,activated_at) VALUES(?,?)').run(
+      version,
+      new Date().toISOString(),
+    );
+  };
   const experiment = (version = active()) => ({
     version,
     active: active(),
@@ -131,16 +155,22 @@ export function createStore(path = 'data/funnel.sqlite') {
     variants.B.weight = weightB;
     return publish(raw);
   };
-  const rollback = () => {
-    const version = active(),
-      prior = one<{ n: number | null }>(
-        'SELECT max(version) n FROM configs WHERE version<?',
-        version,
-      )?.n;
-    if (!prior) throw Error('No previous version');
-    prepare("UPDATE meta SET value=? WHERE key='active'").run(String(prior));
-    return Number(prior);
-  };
+  // Rollback returns to the version that was active before the current one, not to the next
+  // lower number: an allocation change or a re-publication can sit between them.
+  const stack = () =>
+    all<{ id: number; version: number }>(
+      'SELECT id,version FROM activations WHERE rolled_back_at IS NULL ORDER BY id DESC LIMIT 2',
+    );
+  const rollbackTarget = () => stack()[1]?.version;
+  const rollback = () =>
+    transaction(() => {
+      const [current, prior] = stack();
+      if (!prior) throw Error('No previous version');
+      const now = new Date().toISOString();
+      prepare('UPDATE activations SET rolled_back_at=? WHERE id=?').run(now, current.id);
+      prepare("UPDATE meta SET value=? WHERE key='active'").run(String(prior.version));
+      return prior.version;
+    });
   const getSession = (id: string): Session | undefined => {
     const row = one<SessionRow>('SELECT * FROM sessions WHERE id=?', id);
     return row && readSession(row);
@@ -424,6 +454,7 @@ export function createStore(path = 'data/funnel.sqlite') {
     experiment,
     updateExperiment,
     rollback,
+    rollbackTarget,
     getSession,
     start,
     steps,

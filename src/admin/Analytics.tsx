@@ -20,7 +20,7 @@ export function Analytics({ report }: { report: AnalyticsReport }) {
     <>
       <dl className="metrics">
         <div>
-          <dt>Sessions</dt>
+          <dt>Started</dt>
           <dd>{total.started}</dd>
         </div>
         <div>
@@ -36,6 +36,12 @@ export function Analytics({ report }: { report: AnalyticsReport }) {
           <dd>{percent(total.cta, total.result)}</dd>
         </div>
       </dl>
+      {report.sessions > total.started && (
+        <p className="caption">
+          {report.sessions} sessions created; {report.sessions - total.started} never reported an
+          event and are not counted as started.
+        </p>
+      )}
       {!groups.length ? (
         <section className="empty-state">
           <h2>No sessions yet</h2>
@@ -96,8 +102,9 @@ export function Analytics({ report }: { report: AnalyticsReport }) {
                 </table>
               </div>
               <p className="caption">
-                Counts use unique sessions. A transition requires a view of the next step; repeat
-                visits do not increase the count.
+                Counts use unique sessions. A session is started once the client reports its first
+                event. A transition requires a view of the next step; repeat visits do not increase
+                the count.
               </p>
             </section>
           )}
@@ -122,7 +129,7 @@ export function ComparisonTable({
         <thead>
           <tr>
             <th scope="col">{onSelect ? 'Version / variant' : 'Variant'}</th>
-            <th scope="col">Sessions</th>
+            <th scope="col">Started</th>
             <th scope="col">Results</th>
             <th scope="col">Result conversion</th>
             <th scope="col">CTA clicks</th>
