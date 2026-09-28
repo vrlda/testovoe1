@@ -11,6 +11,8 @@ export function matches(
   if (condition.operator === 'eq') return actual === condition.value;
   if (condition.operator === 'in')
     return Array.isArray(condition.value) && condition.value.includes(actual);
+  if (condition.operator === 'contains')
+    return Array.isArray(actual) && actual.includes(condition.value);
   if (condition.operator === 'gte')
     return (
       typeof actual === 'number' && typeof condition.value === 'number' && actual >= condition.value

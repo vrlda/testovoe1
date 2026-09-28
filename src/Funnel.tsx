@@ -132,6 +132,16 @@ function FunnelStep({
           if (result) {
             setExpanded(true);
             send('cta_clicked', { result_id: step.resultId, action: step.action });
+            if (
+              data.config.eventDefinitions?.some(
+                (event) => event.name === 'recommendation_expanded',
+              )
+            )
+              send('recommendation_expanded', {
+                result_id: step.resultId,
+                action: step.action,
+                source: 'result_cta',
+              });
             return;
           }
           const answer =

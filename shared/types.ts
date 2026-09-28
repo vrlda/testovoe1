@@ -18,7 +18,7 @@ export type EventDefinition = {
 export type ResultOverride = Partial<Omit<Result, 'cta'>> & { cta?: Partial<Result['cta']> };
 export type Condition = {
   answer?: string;
-  operator?: 'eq' | 'in' | 'gte';
+  operator?: 'eq' | 'in' | 'contains' | 'gte';
   value?: unknown;
   all?: Condition[];
   any?: Condition[];

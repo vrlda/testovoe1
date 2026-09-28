@@ -14,7 +14,7 @@ const fields: Record<BaseEvent, string[]> = {
   result_viewed: ['result_id'],
   cta_clicked: ['result_id', 'action'],
 };
-const safeProperties = new Set(Object.values(fields).flat());
+const safeProperties = new Set([...Object.values(fields).flat(), 'source']);
 export function definitions(config: Config): EventDefinition[] {
   return config.eventDefinitions ?? baseEvents.map((name) => ({ name, properties: fields[name] }));
 }
@@ -76,6 +76,7 @@ export function validateProperties(
       valid = typeof value === 'string' && steps.some((s) => s.id === value);
     if (key === 'result_id') valid = typeof value === 'string' && resultIds.includes(value);
     if (key === 'action') valid = typeof value === 'string' && actions.includes(value);
+    if (key === 'source') valid = value === 'result_cta';
     if (key === 'visible_step_index' || key === 'visible_step_count')
       valid =
         typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= steps.length;

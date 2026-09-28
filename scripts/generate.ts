@@ -38,8 +38,19 @@ try {
       if (i % 5 === 0)
         event(step.type === 'result' ? 'result_viewed' : 'step_viewed', step.id, props);
       if (step.type === 'result') {
-        if (i % 3 !== 0)
+        if (i % 3 !== 0) {
           event('cta_clicked', step.id, { result_id: step.resultId, action: step.action });
+          if (
+            store
+              .config(s.version)
+              .eventDefinitions?.some((item) => item.name === 'recommendation_expanded')
+          )
+            event('recommendation_expanded', step.id, {
+              result_id: step.resultId,
+              action: step.action,
+              source: 'result_cta',
+            });
+        }
         break;
       }
       if (count >= stop) break;
