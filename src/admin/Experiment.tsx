@@ -68,17 +68,17 @@ export function Experiment({
   return (
     <>
       <label className="field compact version-filter">
-        Версия
+        Version
         <select
-          aria-label="Версия"
+          aria-label="Version"
           value={version}
           disabled={busy}
           onChange={(event) => setVersion(Number(event.target.value))}
         >
           {meta.versions.map((item) => (
             <option key={item.version} value={item.version}>
-              Версия {item.version}
-              {item.version === meta.active ? ' · активна' : ''}
+              Version {item.version}
+              {item.version === meta.active ? ' · active' : ''}
             </option>
           ))}
         </select>
@@ -87,18 +87,18 @@ export function Experiment({
       {!config ? (
         <p role="status">
           {error
-            ? 'Не удалось загрузить настройки. Выберите другую версию или обновите страницу.'
-            : 'Загрузка эксперимента…'}
+            ? 'Could not load settings. Choose another version or refresh the page.'
+            : 'Loading experiment…'}
         </p>
       ) : (
         <>
           <section className="section experiment-settings">
             <div>
-              <h2>Распределение трафика</h2>
+              <h2>Traffic allocation</h2>
               <p className="help">
                 {active
-                  ? 'Изменения действуют для новых сессий. Текущие сессии сохранят свою версию и вариант.'
-                  : 'Эта версия доступна только для просмотра. Новые сессии используют активную версию.'}
+                  ? 'Changes apply to new sessions. Existing sessions keep their version and variant.'
+                  : 'This version is read-only. New sessions use the active version.'}
               </p>
             </div>
             <form
@@ -109,7 +109,7 @@ export function Experiment({
             >
               <div className="weight-fields">
                 <label className="field">
-                  Вариант A, %
+                  Variant A, %
                   <input
                     type="number"
                     min={0}
@@ -121,32 +121,32 @@ export function Experiment({
                   />
                 </label>
                 <label className="field">
-                  Вариант B, %
+                  Variant B, %
                   <output>
-                    {valid ? (100 - a).toLocaleString('ru-RU', { maximumFractionDigits: 4 }) : '—'}
+                    {valid ? (100 - a).toLocaleString('en-AU', { maximumFractionDigits: 4 }) : '—'}
                   </output>
                 </label>
               </div>
               {active && (
                 <button className="button" disabled={!valid || busy || a === distribution(config)}>
-                  {busy ? 'Публикация…' : 'Опубликовать распределение'}
+                  {busy ? 'Publishing…' : 'Publish allocation'}
                 </button>
               )}
             </form>
           </section>
           <section className="section">
-            <h2>Результаты</h2>
+            <h2>Results</h2>
             <ComparisonTable groups={groups} />
             <p className="caption">
               {difference === null
-                ? 'Для сравнения нужны сессии в обоих вариантах.'
-                : `B − A: ${difference >= 0 ? '+' : ''}${difference.toLocaleString('ru-RU', { maximumFractionDigits: 1 })} п. п. Наблюдаемая разница без оценки статистической значимости.`}
+                ? 'Sessions in both variants are needed for comparison.'
+                : `B − A: ${difference >= 0 ? '+' : ''}${difference.toLocaleString('en-AU', { maximumFractionDigits: 1 })} percentage points. Observed difference; statistical significance has not been assessed.`}
             </p>
           </section>
           <section className="section">
             <div className="section-heading">
-              <h2>Варианты</h2>
-              <span className="muted">Назначаются сервером</span>
+              <h2>Variants</h2>
+              <span className="muted">Assigned by the server</span>
             </div>
             <div className="variant-grid">
               {(['A', 'B'] as const).map((variant) => {
@@ -154,7 +154,7 @@ export function Experiment({
                 return (
                   <article className="variant" key={variant}>
                     <div className="section-heading">
-                      <h3>Вариант {variant}</h3>
+                      <h3>Variant {variant}</h3>
                       {active && (
                         <a
                           className="button small"
@@ -162,24 +162,24 @@ export function Experiment({
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          Открыть {variant}
+                          Open {variant}
                         </a>
                       )}
                     </div>
                     <p className="variant-title">{text(details.steps[0].title)}</p>
                     <details>
-                      <summary>Экранов: {details.steps.length}</summary>
+                      <summary>Steps: {details.steps.length}</summary>
                       <ol className="screen-list">
                         {details.steps.map((step) => (
                           <li key={step.id}>
                             {text(step.title)}
-                            {step.visibleWhen && <span className="muted"> · по условию</span>}
+                            {step.visibleWhen && <span className="muted"> · conditional</span>}
                           </li>
                         ))}
                       </ol>
                     </details>
                     <details>
-                      <summary>Содержание результата</summary>
+                      <summary>Result content</summary>
                       {Object.values(config.results || {}).map((result) => {
                         const override = details.resultOverrides?.[result.id];
                         return (
@@ -187,7 +187,7 @@ export function Experiment({
                             <h4>{text(override?.title || result.title)}</h4>
                             <p>{text(override?.summary || result.summary)}</p>
                             <p className="caption">
-                              Кнопка: {text(override?.cta?.label || result.cta.label)}
+                              CTA: {text(override?.cta?.label || result.cta.label)}
                             </p>
                           </div>
                         );
@@ -199,15 +199,15 @@ export function Experiment({
             </div>
             {active && (
               <p className="caption">
-                Проверочные сессии попадают в аналитику с кампанией <code>ab_manual_check</code>.
+                Test sessions appear in analytics under campaign <code>ab_manual_check</code>.
               </p>
             )}
           </section>
           <details className="experiment-details">
-            <summary>Гипотеза и метрика</summary>
+            <summary>Hypothesis and metric</summary>
             <p>{text(config.hypothesis)}</p>
             <p>
-              <strong>Основная метрика:</strong> {text(config.metric)}
+              <strong>Primary metric:</strong> {text(config.metric)}
             </p>
             {config.experimentId && <p className="caption">{config.experimentId}</p>}
           </details>

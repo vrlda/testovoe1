@@ -8,10 +8,10 @@ import { Analytics } from './Analytics';
 import { Experiment } from './Experiment';
 import { Versions } from './Versions';
 
-const tabs = ['Аналитика', 'A/B-тест', 'Версии'] as const;
+const tabs = ['Analytics', 'A/B test', 'Versions'] as const;
 type Tab = (typeof tabs)[number];
 export function Admin() {
-  const [tab, setTab] = useState<Tab>('Аналитика');
+  const [tab, setTab] = useState<Tab>('Analytics');
   const [data, setData] = useState<{ meta: AdminMeta; report: AnalyticsReport } | null>(null);
   const [campaign, setCampaign] = useState('');
   const [loading, setLoading] = useState(true);
@@ -33,8 +33,7 @@ export function Admin() {
         if (controller.signal.aborted) return;
         if (error instanceof ApiError && error.status === 401) {
           setData(null);
-          if (sessionStorage.getItem('admin_token'))
-            setError('Неверный токен. Попробуйте ещё раз.');
+          if (sessionStorage.getItem('admin_token')) setError('Invalid token. Please try again.');
           sessionStorage.removeItem('admin_token');
         } else setError(errorMessage(error));
       })
@@ -44,7 +43,7 @@ export function Admin() {
     return () => controller.abort();
   }, [campaign, revision]);
   function published(version: number) {
-    setNotice(`Версия ${version} активна. Текущие сессии сохранят прежнюю версию.`);
+    setNotice(`Version ${version} is active. Existing sessions keep their version.`);
     refresh();
   }
   function signOut() {
@@ -71,9 +70,9 @@ export function Admin() {
           <>
             <div className="page-heading">
               <h1>{tab}</h1>
-              <span className="muted">Активна версия {data.meta.active}</span>
+              <span className="muted">Active version {data.meta.active}</span>
             </div>
-            <nav className="tabs" aria-label="Управление воронкой">
+            <nav className="tabs" aria-label="Funnel administration">
               {tabs.map((item) => (
                 <button
                   key={item}
@@ -89,15 +88,15 @@ export function Admin() {
               ))}
             </nav>
             <div className="toolbar">
-              {tab !== 'Версии' && (
+              {tab !== 'Versions' && (
                 <label className="field compact">
-                  Кампания
+                  Campaign
                   <select
-                    aria-label="Кампания"
+                    aria-label="Campaign"
                     value={campaign}
                     onChange={(event) => setCampaign(event.target.value)}
                   >
-                    <option value="">Все кампании</option>
+                    <option value="">All campaigns</option>
                     {data.report.campaigns.map((campaign) => (
                       <option key={campaign}>{campaign}</option>
                     ))}
@@ -105,21 +104,21 @@ export function Admin() {
                 </label>
               )}
               <button className="text-button refresh" onClick={refresh} disabled={loading}>
-                {loading ? 'Обновление…' : 'Обновить'}
+                {loading ? 'Refreshing…' : 'Refresh'}
               </button>
             </div>
             {error && (
               <Notice error>
                 {error}{' '}
                 <button className="text-button" onClick={refresh}>
-                  Повторить
+                  Retry
                 </button>
               </Notice>
             )}
             {notice && <Notice>{notice}</Notice>}
             <div aria-busy={loading}>
-              {tab === 'Аналитика' && <Analytics report={data.report} />}
-              {tab === 'A/B-тест' && (
+              {tab === 'Analytics' && <Analytics report={data.report} />}
+              {tab === 'A/B test' && (
                 <Experiment
                   key={data.meta.active}
                   meta={data.meta}
@@ -127,7 +126,7 @@ export function Admin() {
                   onPublished={published}
                 />
               )}
-              {tab === 'Версии' && <Versions meta={data.meta} onPublished={published} />}
+              {tab === 'Versions' && <Versions meta={data.meta} onPublished={published} />}
             </div>
           </>
         )}
@@ -147,8 +146,8 @@ function SignIn({
   const [token, setToken] = useState('');
   return (
     <>
-      <h1>Войти</h1>
-      <p className="intro-copy">Введите токен администратора для управления воронкой.</p>
+      <h1>Sign in</h1>
+      <p className="intro-copy">Enter the admin token to manage the funnel.</p>
       <form
         className="login-form"
         onSubmit={(event) => {
@@ -157,7 +156,7 @@ function SignIn({
         }}
       >
         <label className="field">
-          Токен администратора
+          Admin token
           <input
             type="password"
             autoComplete="current-password"
@@ -169,7 +168,7 @@ function SignIn({
         </label>
         {error && <Notice error>{error}</Notice>}
         <button className="button primary" disabled={loading || !token.trim()}>
-          {loading ? 'Подключение…' : 'Войти'}
+          {loading ? 'Connecting…' : 'Sign in'}
         </button>
       </form>
     </>

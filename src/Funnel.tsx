@@ -39,11 +39,11 @@ export function Funnel() {
               <>
                 <Notice error>{runtime.error}</Notice>
                 <button className="button" onClick={runtime.retry}>
-                  Повторить
+                  Retry
                 </button>
               </>
             ) : (
-              <p role="status">Загрузка сессии…</p>
+              <p role="status">Loading session…</p>
             )}
           </div>
         )}
@@ -112,8 +112,8 @@ function FunnelStep({
     <>
       {step.type !== 'info' && (
         <div className="funnel-progress">
-          <span>{result ? 'Готово' : `Вопрос ${index + 1} из ${visible.length}`}</span>
-          <progress aria-label="Прогресс прохождения" max={100} value={progress} />
+          <span>{result ? 'Complete' : `Question ${index + 1} of ${visible.length}`}</span>
+          <progress aria-label="Funnel progress" max={100} value={progress} />
         </div>
       )}
       <h1 id="step-title" ref={heading} tabIndex={-1}>
@@ -202,21 +202,21 @@ function FunnelStep({
               disabled={runtime.busy}
               onClick={() => runtime.navigate('back')}
             >
-              Назад
+              Back
             </button>
           )}
           <button className="button primary" disabled={runtime.busy}>
             {runtime.busy
-              ? 'Сохранение…'
+              ? 'Saving…'
               : result
-                ? text(step.cta || 'Посмотреть рекомендации')
-                : text(step.primaryActionLabel || 'Продолжить')}
+                ? text(step.cta || 'View recommendations')
+                : text(step.primaryActionLabel || 'Continue')}
           </button>
         </div>
       </form>
       {expanded && step.recommendations && (
         <section className="recommendations" aria-live="polite">
-          <h2>План действий</h2>
+          <h2>Action plan</h2>
           <ol>
             {step.recommendations.map((item) => (
               <li key={item}>{text(item)}</li>
@@ -227,7 +227,7 @@ function FunnelStep({
       {data.session.history.length > 0 && (
         <div className="funnel-bottom">
           <button className="text-button" disabled={runtime.busy} onClick={runtime.restart}>
-            Начать заново
+            Start over
           </button>
         </div>
       )}

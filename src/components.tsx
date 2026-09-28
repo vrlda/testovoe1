@@ -12,17 +12,17 @@ export function Shell({
   return (
     <div className="app">
       <a className="skip-link" href="#main">
-        Перейти к содержимому
+        Skip to content
       </a>
       <header className="site-header">
         <a className="wordmark" href={admin ? '/admin' : '/'}>
-          Воронка
+          Funnel
         </a>
         <div className="header-actions">
-          <a href={admin ? '/' : '/admin'}>{admin ? 'Открыть воронку' : 'Управление'}</a>
+          <a href={admin ? '/' : '/admin'}>{admin ? 'Open funnel' : 'Admin'}</a>
           {onSignOut && (
             <button className="text-button" onClick={onSignOut}>
-              Выйти
+              Sign out
             </button>
           )}
         </div>

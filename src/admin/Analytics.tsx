@@ -20,34 +20,34 @@ export function Analytics({ report }: { report: AnalyticsReport }) {
     <>
       <dl className="metrics">
         <div>
-          <dt>Сессии</dt>
+          <dt>Sessions</dt>
           <dd>{total.started}</dd>
         </div>
         <div>
-          <dt>Дошли до результата</dt>
+          <dt>Reached a result</dt>
           <dd>{total.result}</dd>
         </div>
         <div>
-          <dt>Конверсия в результат</dt>
+          <dt>Result conversion</dt>
           <dd>{percent(total.result, total.started)}</dd>
         </div>
         <div>
-          <dt>CTR кнопки</dt>
+          <dt>CTA click rate</dt>
           <dd>{percent(total.cta, total.result)}</dd>
         </div>
       </dl>
       {!groups.length ? (
         <section className="empty-state">
-          <h2>Пока нет сессий</h2>
-          <p>Сессии появятся, когда кто-нибудь откроет воронку.</p>
+          <h2>No sessions yet</h2>
+          <p>Sessions will appear when someone opens the funnel.</p>
           <a className="button" href="/">
-            Открыть воронку
+            Open funnel
           </a>
         </section>
       ) : (
         <>
           <section className="section">
-            <h2>Версии и варианты</h2>
+            <h2>Versions and variants</h2>
             <ComparisonTable
               groups={groups}
               selected={selected && groupKey(selected)}
@@ -57,35 +57,30 @@ export function Analytics({ report }: { report: AnalyticsReport }) {
           {selected && (
             <section className="section">
               <div className="section-heading">
-                <h2>Конверсия по шагам</h2>
+                <h2>Step conversion</h2>
                 <label className="field compact">
-                  <span className="sr-only">Версия и вариант</span>
+                  <span className="sr-only">Version and variant</span>
                   <select
-                    aria-label="Версия и вариант"
+                    aria-label="Version and variant"
                     value={groupKey(selected)}
                     onChange={(event) => setSelection(event.target.value)}
                   >
                     {groups.map((group) => (
                       <option key={groupKey(group)} value={groupKey(group)}>
-                        Версия {group.version} · {group.variant}
+                        Version {group.version} · {group.variant}
                       </option>
                     ))}
                   </select>
                 </label>
               </div>
-              <div
-                className="table-scroll"
-                tabIndex={0}
-                role="region"
-                aria-label="Конверсия по шагам"
-              >
+              <div className="table-scroll" tabIndex={0} role="region" aria-label="Step conversion">
                 <table className="data-table steps-table">
                   <thead>
                     <tr>
-                      <th scope="col">Шаг</th>
-                      <th scope="col">Просмотры</th>
-                      <th scope="col">Ушли</th>
-                      <th scope="col">Перешли дальше</th>
+                      <th scope="col">Step</th>
+                      <th scope="col">Views</th>
+                      <th scope="col">Drop-offs</th>
+                      <th scope="col">Continued</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -101,8 +96,8 @@ export function Analytics({ report }: { report: AnalyticsReport }) {
                 </table>
               </div>
               <p className="caption">
-                Считаются уникальные сессии. Переход — просмотр следующего шага; повторные посещения
-                не увеличивают счётчик.
+                Counts use unique sessions. A transition requires a view of the next step; repeat
+                visits do not increase the count.
               </p>
             </section>
           )}
@@ -122,16 +117,16 @@ export function ComparisonTable({
   onSelect?: (key: string) => void;
 }) {
   return (
-    <div className="table-scroll" tabIndex={0} role="region" aria-label="Сравнение конверсии">
+    <div className="table-scroll" tabIndex={0} role="region" aria-label="Conversion comparison">
       <table className="data-table">
         <thead>
           <tr>
-            <th scope="col">{onSelect ? 'Версия / вариант' : 'Вариант'}</th>
-            <th scope="col">Сессии</th>
-            <th scope="col">Результаты</th>
-            <th scope="col">Конверсия в результат</th>
-            <th scope="col">Клики по кнопке</th>
-            <th scope="col">CTR кнопки</th>
+            <th scope="col">{onSelect ? 'Version / variant' : 'Variant'}</th>
+            <th scope="col">Sessions</th>
+            <th scope="col">Results</th>
+            <th scope="col">Result conversion</th>
+            <th scope="col">CTA clicks</th>
+            <th scope="col">CTA click rate</th>
           </tr>
         </thead>
         <tbody>

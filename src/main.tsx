@@ -12,9 +12,9 @@ const page =
   ) : (
     <Shell>
       <main id="main" className="page narrow">
-        <h1>Страница не найдена</h1>
+        <h1>Page not found</h1>
         <a className="button" href="/">
-          Открыть воронку
+          Open funnel
         </a>
       </main>
     </Shell>

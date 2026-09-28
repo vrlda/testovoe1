@@ -46,24 +46,24 @@ export function Versions({
       {error && <Notice error>{error}</Notice>}
       <div className="versions-layout">
         <section className="section">
-          <h2>История версий</h2>
+          <h2>Version history</h2>
           <ul className="release-list">
             {meta.versions.map((version) => (
               <li key={version.version}>
                 <div>
-                  <strong>Версия {version.version}</strong>
+                  <strong>Version {version.version}</strong>
                   <span className="muted">
                     {version.sourceVersion !== undefined
                       ? `JSON v${version.sourceVersion}`
-                      : 'Исходный формат'}{' '}
+                      : 'Original format'}{' '}
                     ·{' '}
-                    {new Intl.DateTimeFormat('ru-RU', {
+                    {new Intl.DateTimeFormat('en-AU', {
                       dateStyle: 'medium',
                       timeStyle: 'short',
                     }).format(new Date(version.published_at))}
                   </span>
                 </div>
-                {version.version === meta.active && <span className="active-label">Активна</span>}
+                {version.version === meta.active && <span className="active-label">Active</span>}
               </li>
             ))}
           </ul>
@@ -73,18 +73,19 @@ export function Versions({
             onClick={() => mutate('rollback')}
           >
             {busy === 'rollback'
-              ? 'Откат…'
+              ? 'Rolling back…'
               : previous
-                ? `Вернуться к версии ${previous.version}`
-                : 'Нет предыдущей версии'}
+                ? `Roll back to version ${previous.version}`
+                : 'No previous version'}
           </button>
           <p className="caption">
-            Откат меняет версию для новых сессий. Текущие сессии и аналитика сохраняются.
+            Rollback changes the version for new sessions. Existing sessions and analytics are
+            preserved.
           </p>
         </section>
         <section className="section">
-          <h2>Публикация конфигурации</h2>
-          <p className="help">Загрузите JSON-файл или вставьте его содержимое.</p>
+          <h2>Publish configuration</h2>
+          <p className="help">Upload a JSON file or paste its contents.</p>
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -92,7 +93,7 @@ export function Versions({
             }}
           >
             <label className="file-picker button">
-              Выбрать JSON-файл
+              Choose JSON file
               <input
                 type="file"
                 accept=".json,application/json"
@@ -113,7 +114,7 @@ export function Versions({
             </label>
             {filename && <p className="caption">{filename}</p>}
             <label className="field json-field">
-              <span className="sr-only">Конфигурация JSON</span>
+              <span className="sr-only">JSON configuration</span>
               <textarea
                 value={source}
                 onChange={(event) => {
@@ -121,19 +122,19 @@ export function Versions({
                   setFilename('');
                 }}
                 spellCheck={false}
-                placeholder="Вставьте конфигурацию в формате JSON"
+                placeholder="Paste a JSON configuration"
                 disabled={!!busy}
               />
             </label>
             {source.trim() && !valid && (
               <p className="error" role="alert">
-                Введите корректный JSON-объект.
+                Enter a valid JSON object.
               </p>
             )}
             <button className="button primary" disabled={!valid || !!busy}>
-              {busy === 'publish' ? 'Публикация…' : 'Опубликовать версию'}
+              {busy === 'publish' ? 'Publishing…' : 'Publish version'}
             </button>
-            <p className="caption">Перед публикацией конфигурация проходит проверку.</p>
+            <p className="caption">The configuration is validated before publication.</p>
           </form>
         </section>
       </div>
