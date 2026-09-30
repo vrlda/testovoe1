@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { createStore } from '../server/core.ts';
 import type { Session } from '../shared/types.ts';
+import { reachResult } from './helpers.ts';
 const v1 = JSON.parse(readFileSync('configs/workstyle-v1.json', 'utf8'));
 const ev = (
   s: Session,
@@ -97,13 +98,13 @@ test('delayed result events cannot inflate CTR and duplicate multi-select values
     d.publish(v1);
     const a = d.start('A'),
       b = d.start('A');
+    reachResult(d, a);
+    reachResult(d, b);
     d.ingest([ev(a, 'result_viewed', 'result'), ev(b, 'cta_clicked', 'result')]);
     assert.equal(d.analytics().groups[0].ctr, 0);
     d.ingest([ev(b, 'result_viewed', 'result')]);
     assert.equal(d.analytics().groups[0].ctr, 0.5);
-    d.submit(a, null);
-    d.submit(a, 10);
-    d.submit(a, 'hybrid');
+    while (String(a.current) !== 'priorities') d.back(a);
     assert.equal(a.current, 'priorities');
     assert.throws(() => d.submit(a, ['focus', 'focus']), /valid options/);
   } finally {

@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createStore } from '../server/core.ts';
+import { reachResult } from './helpers.ts';
 const v1 = JSON.parse(readFileSync('configs/workstyle-v1.json', 'utf8'));
 const event = (s: Session, type: string, id: string, step = 'intro') => ({
   event_id: id,
@@ -38,12 +39,14 @@ test('batch deduplicates IDs, isolates invalid events and uses unique sessions',
   d.publish(v1);
   const s = d.start('A', { utm_campaign: 'search' });
   const a = event(s, 'step_viewed', 'one'),
-    b = event(s, 'step_completed', 'two');
+    b = event(s, 'step_viewed', 'two');
   const result = d.ingest([a, a, { bad: true }, b]);
   assert.deepEqual(
     result.map((x) => x.status),
     ['accepted', 'duplicate', 'rejected', 'accepted'],
   );
+  d.submit(s, null);
+  reachResult(d, s);
   d.ingest([
     b,
     a,

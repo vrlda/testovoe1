@@ -126,4 +126,9 @@ export type AnalyticsGroup = {
   steps: Record<string, { views: number; advanced: number }>;
   stepMetrics: StepMetric[];
 };
-export type AnalyticsReport = { sessions: number; groups: AnalyticsGroup[]; campaigns: string[] };
+export type AnalyticsReport = {
+  sessions: number;
+  groups: AnalyticsGroup[];
+  campaigns: string[];
+  unverifiedEvents: number;
+};

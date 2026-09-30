@@ -13,7 +13,12 @@ import type {
   Step,
   Config,
 } from '../shared/types.ts';
-import { definitions, validateProperties } from './events.ts';
+import {
+  definitions,
+  validateProperties,
+  validateClientEvent,
+  type StepContext,
+} from './events.ts';
 export function createStore(path = 'data/funnel.sqlite') {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
@@ -48,6 +53,13 @@ export function createStore(path = 'data/funnel.sqlite') {
       properties TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS events_session ON events(session_id);
+    CREATE TABLE IF NOT EXISTS step_contexts (
+      session_id TEXT NOT NULL,
+      step_id TEXT NOT NULL,
+      result_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      PRIMARY KEY(session_id, step_id, result_id, action)
+    );
     CREATE TABLE IF NOT EXISTS activations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       version INTEGER NOT NULL,
@@ -55,6 +67,14 @@ export function createStore(path = 'data/funnel.sqlite') {
       rolled_back_at TEXT
     );
   `);
+  // Previously accepted events have no trustworthy provenance. Keep their rows for audit,
+  // but do not let future navigation retroactively make them eligible for analytics.
+  if (
+    !(db.prepare('PRAGMA table_info(events)').all() as { name: string }[]).some(
+      (c) => c.name === 'origin',
+    )
+  )
+    db.exec("ALTER TABLE events ADD COLUMN origin TEXT NOT NULL DEFAULT 'legacy'");
   // Databases created before the activation log: treat published versions up to the active one
   // as the stack, in publication order. Later numbers were already rolled back.
   if (!db.prepare('SELECT 1 FROM activations LIMIT 1').get()) {
@@ -217,6 +237,7 @@ export function createStore(path = 'data/funnel.sqlite') {
         session.createdAt,
       );
       record(session, 'session_started', first);
+      rememberStep(session);
       return session;
     });
   const resultFor = (session: Session) => {
@@ -246,6 +267,7 @@ export function createStore(path = 'data/funnel.sqlite') {
         : step;
     });
   const presentation = (session: Session): Config => {
+    rememberStep(session);
     const configuration = config(session.version);
     return {
       ...configuration,
@@ -254,6 +276,29 @@ export function createStore(path = 'data/funnel.sqlite') {
         [session.variant]: { ...configuration.variants[session.variant], steps: steps(session) },
       },
     };
+  };
+  const rememberStep = (session: Session) => {
+    const sequence = steps(session);
+    // Upgrade old sessions from server-owned navigation state, never from old telemetry.
+    // Earlier result identities may have changed and cannot be reconstructed safely.
+    if (!one('SELECT 1 FROM step_contexts WHERE session_id=? LIMIT 1', session.id))
+      for (const prior of sequence.filter(
+        (step) => step.type !== 'result' && session.history.includes(step.id),
+      ))
+        prepare('INSERT OR IGNORE INTO step_contexts VALUES(?,?,?,?)').run(
+          session.id,
+          prior.id,
+          '',
+          '',
+        );
+    const step = sequence.find((candidate) => candidate.id === session.current);
+    if (!step) throw Error('Invalid current step');
+    prepare('INSERT OR IGNORE INTO step_contexts VALUES(?,?,?,?)').run(
+      session.id,
+      step.id,
+      step.resultId ?? '',
+      step.action ?? '',
+    );
   };
   const visible = (session: Session, step: Step) => matches(step.visibleWhen, session.answers);
   const next = (session: Session, step: Step, sequence: Step[]) => {
@@ -310,6 +355,7 @@ export function createStore(path = 'data/funnel.sqlite') {
       if (step.type !== 'info')
         record(session, 'answer_submitted', step.id, { answer_kind: step.type }, clientTimestamp);
       record(session, 'step_completed', step.id, { next_step_id: target }, clientTimestamp);
+      rememberStep(session);
     });
     return session;
   };
@@ -317,17 +363,20 @@ export function createStore(path = 'data/funnel.sqlite') {
     if (typeof clientTimestamp !== 'string' || !Number.isFinite(Date.parse(clientTimestamp)))
       throw Error('Invalid client timestamp');
     const from = session.current,
-      prior = session.history.pop();
+      prior = session.history.at(-1);
     if (prior) {
-      session.current = prior;
       transaction(() => {
+        rememberStep(session);
+        session.history.pop();
+        session.current = prior;
         save(session);
         record(session, 'back_clicked', from, { destination_step_id: prior }, clientTimestamp);
+        rememberStep(session);
       });
     }
     return session;
   };
-  const ingest = (batch: unknown): EventReceipt[] => {
+  const ingestEvents = (batch: unknown, origin: 'server' | 'client'): EventReceipt[] => {
     if (!Array.isArray(batch)) throw Error('Expected an array');
     if (batch.length > 50) throw Error('Event batch must contain at most 50 items.');
     return batch.map((raw, index) => {
@@ -357,7 +406,22 @@ export function createStore(path = 'data/funnel.sqlite') {
           if (!definition) throw Error('Event not allowed for this version');
           if (typeof e.step_id !== 'string' || !sequence.some((step) => step.id === e.step_id))
             throw Error('A valid step_id is required');
-          const clean = validateProperties(cfg, sequence, definition, e.properties);
+          let clean = validateProperties(cfg, sequence, definition, e.properties);
+          if (origin === 'client') {
+            // Also authorise the current state of sessions created before this upgrade.
+            // Never derive reachability from client-written events or client timestamps.
+            rememberStep(session);
+            clean = validateClientEvent(
+              definition,
+              sequence.find((step) => step.id === e.step_id)!,
+              clean,
+              all<StepContext>(
+                'SELECT result_id,action FROM step_contexts WHERE session_id=? AND step_id=?',
+                session.id,
+                e.step_id,
+              ),
+            );
+          }
           const insert = (id: string, type: string, properties: Record<string, unknown>) => {
             if (one('SELECT 1 FROM events WHERE event_id=?', id)) return 0;
             const count = one<{ n: number }>(
@@ -372,7 +436,9 @@ export function createStore(path = 'data/funnel.sqlite') {
                 funnel_version: cfg.sourceVersion,
                 experiment_id: cfg.experimentId,
               };
-            return prepare('INSERT OR IGNORE INTO events VALUES(?,?,?,?,?,?,?,?,?,?)').run(
+            return prepare(
+              'INSERT OR IGNORE INTO events(event_id,session_id,server_timestamp,client_timestamp,type,version,variant,step_id,utm,properties,origin) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+            ).run(
               id,
               session.id,
               new Date().toISOString(),
@@ -383,6 +449,7 @@ export function createStore(path = 'data/funnel.sqlite') {
               e.step_id!,
               JSON.stringify(session.utm),
               JSON.stringify(properties),
+              origin,
             ).changes;
           };
           // One transaction commits the source event and its declared derivatives together.
@@ -406,6 +473,7 @@ export function createStore(path = 'data/funnel.sqlite') {
       }
     });
   };
+  const ingest = (batch: unknown): EventReceipt[] => ingestEvents(batch, 'client');
   const record = (
     session: Session,
     type: string,
@@ -413,16 +481,19 @@ export function createStore(path = 'data/funnel.sqlite') {
     properties: Record<string, unknown> = {},
     clientTimestamp = new Date().toISOString(),
   ) => {
-    const result = ingest([
-      {
-        event_id: randomUUID(),
-        session_id: session.id,
-        client_timestamp: clientTimestamp,
-        type,
-        step_id,
-        properties,
-      },
-    ])[0];
+    const result = ingestEvents(
+      [
+        {
+          event_id: randomUUID(),
+          session_id: session.id,
+          client_timestamp: clientTimestamp,
+          type,
+          step_id,
+          properties,
+        },
+      ],
+      'server',
+    )[0];
     if (result.status === 'rejected' && 'error' in result) throw Error(result.error);
   };
   const analytics = (campaign = '') => {
@@ -434,13 +505,20 @@ export function createStore(path = 'data/funnel.sqlite') {
     );
     const events = all<AnalyticsEvent>(
       'SELECT e.session_id,e.type,e.step_id,e.properties FROM events e JOIN sessions s ON s.id=e.session_id' +
-        filter,
+        (filter ? filter + ' AND' : ' WHERE') +
+        " e.origin IN ('server','client')",
       ...args,
     );
     const campaigns = all<{ campaign: string }>(
       "SELECT DISTINCT json_extract(utm,'$.utm_campaign') AS campaign FROM sessions WHERE campaign IS NOT NULL AND campaign <> '' ORDER BY campaign",
     ).map((row) => row.campaign);
-    return aggregate(sessions, events, config, campaigns);
+    const unverified = one<{ n: number }>(
+      'SELECT count(*) n FROM events e JOIN sessions s ON s.id=e.session_id' +
+        (filter ? filter + ' AND' : ' WHERE') +
+        " e.origin='legacy'",
+      ...args,
+    )!.n;
+    return aggregate(sessions, events, config, campaigns, unverified);
   };
   const versions = (): VersionSummary[] =>
     all<{ version: number; published_at: string }>(

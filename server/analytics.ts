@@ -13,6 +13,7 @@ export function aggregate(
   events: AnalyticsEvent[],
   config: (version: number) => Config,
   campaigns: string[],
+  unverifiedEvents = 0,
 ): AnalyticsReport {
   const bySession = new Map<string, SessionEvents>();
   for (const event of events) {
@@ -57,7 +58,7 @@ export function aggregate(
     }
     const summary = bySession.get(session.id);
     // session_started is written by the server on creation. A session counts as started only
-    // after the client reports something, so API-only creations and retried creates are ignored.
+    // after verified activity, so creations without further activity are ignored.
     if ([...(summary?.types.keys() ?? [])].some((type) => type !== 'session_started'))
       group.started++;
     const viewed = summary?.types.get('step_viewed') || new Set<string>();
@@ -110,5 +111,5 @@ export function aggregate(
         };
       });
   }
-  return { sessions: sessions.length, groups: [...groups.values()], campaigns };
+  return { sessions: sessions.length, groups: [...groups.values()], campaigns, unverifiedEvents };
 }

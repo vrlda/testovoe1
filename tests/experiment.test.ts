@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createStore } from '../server/core.ts';
 import { differenceInterval } from '../shared/stats.ts';
+import { reachResult } from './helpers.ts';
 const v1 = JSON.parse(readFileSync('configs/workstyle-v1.json', 'utf8'));
 
 test('weights publish immutably; zero weight, override, restart and rollback stay consistent', () => {
@@ -63,6 +64,8 @@ test('A/B metrics count unique sessions and respect version and campaign', () =>
   const a = d.start('A', { utm_campaign: 'search' }),
     b = d.start('B', { utm_campaign: 'search' });
   d.start('A', { utm_campaign: 'other' });
+  reachResult(d, a);
+  reachResult(d, b);
   const ev = (s: typeof a, type: string) => ({
     event_id: randomUUID(),
     session_id: s.id,

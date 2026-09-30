@@ -36,10 +36,16 @@ export function Analytics({ report }: { report: AnalyticsReport }) {
           <dd>{percent(total.cta, total.result)}</dd>
         </div>
       </dl>
+      {report.unverifiedEvents > 0 && (
+        <p className="notice">
+          {report.unverifiedEvents} historical events could not be verified and are excluded from
+          these metrics.
+        </p>
+      )}
       {report.sessions > total.started && (
         <p className="caption">
-          {report.sessions} sessions created; {report.sessions - total.started} never reported an
-          event and are not counted as started.
+          {report.sessions} sessions created; {report.sessions - total.started} have no verified
+          activity and are not counted as started.
         </p>
       )}
       {!groups.length ? (
@@ -102,9 +108,9 @@ export function Analytics({ report }: { report: AnalyticsReport }) {
                 </table>
               </div>
               <p className="caption">
-                Counts use unique sessions. A session is started once the client reports its first
-                event. A transition requires a view of the next step; repeat visits do not increase
-                the count.
+                Counts use unique sessions. A session is started once it records verified activity
+                beyond creation. A transition requires a view of the next step; repeat visits do not
+                increase the count.
               </p>
             </section>
           )}

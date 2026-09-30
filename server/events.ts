@@ -15,6 +15,57 @@ const fields: Record<BaseEvent, string[]> = {
   cta_clicked: ['result_id', 'action'],
 };
 const safeProperties = new Set([...Object.values(fields).flat(), 'source']);
+const serverEvents = new Set([
+  'session_started',
+  'answer_submitted',
+  'step_completed',
+  'back_clicked',
+]);
+export type StepContext = { result_id: string; action: string };
+
+export function validateClientEvent(
+  definition: EventDefinition,
+  step: Step,
+  properties: Record<string, unknown>,
+  contexts: StepContext[],
+): Record<string, unknown> {
+  if (serverEvents.has(definition.name) || definition.emitOn)
+    throw Error('This event can only be recorded by the server');
+  if (definition.stepId && definition.stepId !== step.id)
+    throw Error('Event is not allowed on this step');
+  const resultEvent =
+    definition.name === 'result_viewed' ||
+    definition.name === 'cta_clicked' ||
+    definition.properties.some((key) => ['result_id', 'action', 'source'].includes(key));
+  if (!resultEvent) {
+    if (definition.name === 'step_viewed' && step.type === 'result')
+      throw Error('Result steps require result_viewed');
+    if (!contexts.length) throw Error('Step has not been reached');
+    if (properties.step_type !== undefined && properties.step_type !== step.type)
+      throw Error('Step type does not match');
+    return {
+      ...properties,
+      ...(definition.properties.includes('step_type') ? { step_type: step.type } : {}),
+    };
+  }
+  if (step.type !== 'result') throw Error('Event requires a reached result step');
+  const context = contexts.find(
+    (candidate) =>
+      (properties.result_id === undefined || properties.result_id === candidate.result_id) &&
+      (properties.action === undefined || properties.action === candidate.action),
+  );
+  if (!context) throw Error('Result and action have not been issued to this session');
+  return {
+    ...properties,
+    ...(definition.properties.includes('result_id') && context.result_id
+      ? { result_id: context.result_id }
+      : {}),
+    ...(definition.properties.includes('action') && context.action
+      ? { action: context.action }
+      : {}),
+    ...(definition.properties.includes('source') ? { source: 'result_cta' } : {}),
+  };
+}
 export function definitions(config: Config): EventDefinition[] {
   return config.eventDefinitions ?? baseEvents.map((name) => ({ name, properties: fields[name] }));
 }
